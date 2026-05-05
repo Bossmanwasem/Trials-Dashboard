@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Trials Queue Dashboard{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body class="{% block body_class %}{% endblock %}">
+    <nav class="topbar">
+      <div>
+        <span class="brand">Trials Queue</span>
+        <span class="path">Excel source: {{ excel_path }}</span>
+      </div>
+      <div class="navlinks">
+        <a href="{{ url_for('pre_prep_dashboard') }}">Pre-prep view</a>
+        <a href="{{ url_for('coordinator_dashboard') }}">Device coordinator view</a>
+      </div>
+    </nav>
+    <main>{% block content %}{% endblock %}</main>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

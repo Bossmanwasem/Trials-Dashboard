@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+instance/
+data/queue_state.json
+~$*.xlsx

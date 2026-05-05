@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Device Coordinator Dashboard{% endblock %}
+{% block body_class %}coordinator-theme{% endblock %}
+{% block content %}
+<section class="hero coord-hero">
+  <div>
+    <p class="eyebrow">Device coordinators</p>
+    <h1>Claim ready devices in FIFO order.</h1>
+    <p>Only rows marked ready flow into this dashboard. Offers last {{ claim_timeout }} seconds; skipped or missed work moves the coordinator to the bottom of that queue.</p>
+  </div>
+  <div class="queue-card">
+    <label>Your name<input id="user-name" placeholder="Initials or name"></label>
+    <div class="button-row">
+      <button data-join="prep">Join prep queue</button>
+      <button data-join="qa">Join 2nd-check queue</button>
+    </div>
+  </div>
+</section>
+<section class="queue-board">
+  <article class="panel">
+    <h2>Prep FIFO</h2>
+    <ol id="prep-queue">
+      {% for entry in queue_state.prep %}<li>{{ entry.user }}</li>{% endfor %}
+    </ol>
+  </article>
+  <article class="panel qa-panel">
+    <h2>2nd-check FIFO</h2>
+    <ol id="qa-queue">
+      {% for entry in queue_state.qa %}<li>{{ entry.user }}</li>{% endfor %}
+    </ol>
+  </article>
+</section>
+{% for lane in priorities %}
+<section class="lane">
+  <header><h2>{{ lane }}</h2></header>
+  <div class="cards">
+    {% for row in rows if row.lane == lane %}
+    <article class="order-card" data-row="{{ row.row_number }}">
+      <div class="card-head"><strong>{{ row.display_name or 'No name' }}</strong><span>#{{ row.id or row.row_number }}</span></div>
+      <p>{{ row.device }} · {{ row.loan_type or 'No loan type' }}</p>
+      <p class="muted">Queue date: {{ row.queue_date or 'n/a' }} · Priority: {{ row.priority or 'Regular' }}</p>
+      {% if row.notes %}<p class="note">{{ row.notes }}</p>{% endif %}
+      <p class="status">{{ row.assignment_status or 'Ready' }}{% if row.assignment_user %} — {{ row.assignment_user }}{% endif %}</p>
+      <div class="button-row">
+        {% if row.prep_ready %}
+        <button data-assign="prep">Offer prep</button><button data-claim="prep">Claim prep</button><button data-complete="prep">Prep complete</button><button data-skip="prep">Skip</button>
+        {% endif %}
+        {% if row.qa_ready %}
+        <button data-assign="qa">Offer 2nd check</button><button data-claim="qa">Claim 2nd check</button><button data-complete="qa">2nd check complete</button><button data-skip="qa">Skip</button>
+        {% endif %}
+      </div>
+    </article>
+    {% else %}
+    <p class="empty">No orders in this lane right now.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='app.js') }}"></script>{% endblock %}

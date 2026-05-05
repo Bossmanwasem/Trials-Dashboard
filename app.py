@@ -5,6 +5,7 @@ reads and writes the shared Excel workbook directly, so teams can keep the
 SharePoint-synced workbook as the source of truth.
 """
 
+import argparse
 import json
 import os
 import threading
@@ -15,7 +16,6 @@ from tkinter import BooleanVar, StringVar, Tk, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 from uuid import uuid4
 
-from openpyxl import load_workbook
 
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_EXCEL_PATH = BASE_DIR / "testing QUEUE.xlsx"
@@ -118,6 +118,8 @@ class ExcelQueueStore:
     def _open(self):
         if not self.excel_path.exists():
             raise FileNotFoundError(f"Excel queue file not found: {self.excel_path}")
+        from openpyxl import load_workbook
+
         workbook = load_workbook(self.excel_path)
         worksheet = workbook.active
         headers = {str(cell.value).strip(): cell.column for cell in worksheet[1] if cell.value}
@@ -563,8 +565,44 @@ class TrialsDashboard(Tk):
         self.after(POLL_SECONDS * 1000, self.poll_for_changes)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Run the local Trials Queue Dashboard desktop UI."
+    )
+    parser.add_argument(
+        "--excel-path",
+        default=str(EXCEL_PATH),
+        help="Path to the SharePoint-synced Excel workbook. Defaults to QUEUE_EXCEL_PATH or testing QUEUE.xlsx.",
+    )
+    parser.add_argument(
+        "--queue-state-path",
+        default=str(STATE_PATH),
+        help="Path to the shared FIFO queue JSON file. Defaults to QUEUE_STATE_PATH or data/queue_state.json.",
+    )
+    parser.add_argument(
+        "--claim-timeout-seconds",
+        type=int,
+        default=CLAIM_TIMEOUT_SECONDS,
+        help="Seconds a coordinator has to claim an offered order. Defaults to 120.",
+    )
+    parser.add_argument(
+        "--poll-seconds",
+        type=int,
+        default=POLL_SECONDS,
+        help="Seconds between local refresh checks. Defaults to 10.",
+    )
+    return parser.parse_args()
+
+
 def main():
-    app = TrialsDashboard(ExcelQueueStore(EXCEL_PATH), QueueState(STATE_PATH))
+    global CLAIM_TIMEOUT_SECONDS, POLL_SECONDS
+    args = parse_args()
+    CLAIM_TIMEOUT_SECONDS = args.claim_timeout_seconds
+    POLL_SECONDS = args.poll_seconds
+    app = TrialsDashboard(
+        ExcelQueueStore(Path(args.excel_path).expanduser()),
+        QueueState(Path(args.queue_state_path).expanduser()),
+    )
     app.mainloop()
 
 

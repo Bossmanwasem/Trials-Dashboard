@@ -34,24 +34,58 @@ python app.py
 
 ## Point it at the SharePoint workbook
 
-If the workbook is synced locally from SharePoint, point the app at that file:
+### Easiest option: command-line arguments
 
-```bash
-QUEUE_EXCEL_PATH="/path/to/SharePoint/testing QUEUE.xlsx" python app.py
+PowerShell does **not** understand the Bash-style command `QUEUE_EXCEL_PATH="C:\..." python app.py`. On Windows, the easiest option is to pass the workbook path as an argument:
+
+```powershell
+python app.py --excel-path "C:\Users\Jorda\OneDrive\Desktop\Testing Dashboard\testing QUEUE.xlsx"
 ```
 
-For multiple coordinators to share FIFO queue membership, also put the queue state JSON somewhere synced/shared:
+If multiple coordinators need the same FIFO queue membership, also point `--queue-state-path` to a shared/synced JSON file:
 
-```bash
-QUEUE_STATE_PATH="/path/to/SharePoint/queue_state.json" python app.py
+```powershell
+python app.py --excel-path "C:\Users\Jorda\OneDrive\Desktop\Testing Dashboard\testing QUEUE.xlsx" --queue-state-path "C:\Users\Jorda\OneDrive\Desktop\Testing Dashboard\queue_state.json"
 ```
 
-Optional environment variables:
+The same argument style works on macOS/Linux:
 
-- `QUEUE_EXCEL_PATH`: path to the Excel workbook. Defaults to this repo's `testing QUEUE.xlsx`.
-- `QUEUE_STATE_PATH`: JSON file used for FIFO queue membership. Defaults to `data/queue_state.json`.
-- `CLAIM_TIMEOUT_SECONDS`: offer timeout. Defaults to `120`.
-- `QUEUE_POLL_SECONDS`: how often the local app refreshes and checks for offers. Defaults to `10`.
+```bash
+python app.py --excel-path "/path/to/SharePoint/testing QUEUE.xlsx" --queue-state-path "/path/to/SharePoint/queue_state.json"
+```
+
+### Optional: environment variables
+
+If you prefer environment variables, the syntax depends on your shell.
+
+PowerShell:
+
+```powershell
+$env:QUEUE_EXCEL_PATH = "C:\Users\Jorda\OneDrive\Desktop\Testing Dashboard\testing QUEUE.xlsx"
+$env:QUEUE_STATE_PATH = "C:\Users\Jorda\OneDrive\Desktop\Testing Dashboard\queue_state.json"
+python app.py
+```
+
+Command Prompt:
+
+```cmd
+set "QUEUE_EXCEL_PATH=C:\Users\Jorda\OneDrive\Desktop\Testing Dashboard\testing QUEUE.xlsx"
+set "QUEUE_STATE_PATH=C:\Users\Jorda\OneDrive\Desktop\Testing Dashboard\queue_state.json"
+python app.py
+```
+
+Bash/macOS/Linux:
+
+```bash
+QUEUE_EXCEL_PATH="/path/to/SharePoint/testing QUEUE.xlsx" QUEUE_STATE_PATH="/path/to/SharePoint/queue_state.json" python app.py
+```
+
+Available settings:
+
+- `--excel-path` / `QUEUE_EXCEL_PATH`: path to the Excel workbook. Defaults to this repo's `testing QUEUE.xlsx`.
+- `--queue-state-path` / `QUEUE_STATE_PATH`: JSON file used for FIFO queue membership. Defaults to `data/queue_state.json`.
+- `--claim-timeout-seconds` / `CLAIM_TIMEOUT_SECONDS`: offer timeout. Defaults to `120`.
+- `--poll-seconds` / `QUEUE_POLL_SECONDS`: how often the local app refreshes and checks for offers. Defaults to `10`.
 
 ## Workbook expectations
 

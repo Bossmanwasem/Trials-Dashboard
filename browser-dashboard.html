@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trials Queue Browser Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #172033; background: #f5f7fb; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { background: radial-gradient(circle at 10% 20%, #7c3aed, transparent 28%), linear-gradient(135deg, #0f172a, #1d4ed8); color: white; padding: 28px; }
+    header h1 { font-size: clamp(2rem, 4vw, 4rem); line-height: .95; margin: 0 0 10px; }
+    header p { color: #dbeafe; max-width: 980px; }
+    main { margin: 0 auto; max-width: 1380px; padding: 22px; }
+    .notice { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 16px; color: #7c2d12; margin-bottom: 18px; padding: 14px 16px; }
+    .grid { display: grid; gap: 18px; grid-template-columns: repeat(12, 1fr); }
+    .card { background: rgba(255,255,255,.95); border: 1px solid #e5e7eb; border-radius: 22px; box-shadow: 0 18px 42px rgba(15, 23, 42, .08); padding: 18px; }
+    .span-4 { grid-column: span 4; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
+    label { display: grid; font-weight: 750; gap: 6px; }
+    input, select, textarea { border: 1px solid #cbd5e1; border-radius: 12px; font: inherit; padding: 10px 12px; width: 100%; }
+    button { background: #2563eb; border: 0; border-radius: 999px; color: white; cursor: pointer; font-weight: 800; padding: 10px 14px; }
+    button.secondary { background: #475569; }
+    button.warn { background: #b45309; }
+    button.good { background: #047857; }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+    .row { align-items: end; display: flex; flex-wrap: wrap; gap: 10px; }
+    .queue { background: #eef2ff; border-radius: 14px; margin-top: 10px; padding: 10px; }
+    .queue strong { color: #3730a3; }
+    .lane { margin-top: 20px; }
+    .lane h2 { align-items: center; display: flex; justify-content: space-between; }
+    .cards { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+    .order { border-left: 6px solid #2563eb; }
+    .order h3 { margin: 0 0 6px; }
+    .muted { color: #64748b; font-size: .92rem; }
+    .status { background: #f1f5f9; border-radius: 12px; padding: 8px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border-bottom: 1px solid #e5e7eb; padding: 8px; text-align: left; }
+    th { background: #f8fafc; }
+    @media (max-width: 900px) { .span-4, .span-8 { grid-column: span 12; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Trials Queue Browser Dashboard</h1>
+    <p>Open this file in your browser, load an Excel workbook downloaded from Excel for web, work the queue, then download the updated workbook. No Python, Tkinter, or hosted server required.</p>
+  </header>
+  <main>
+    <section class="notice">
+      <strong>Excel for web note:</strong> a normal browser page cannot directly save changes into an already-open Excel Online workbook. This dashboard edits the workbook in your browser and downloads an updated `.xlsx` copy for upload/replace in SharePoint. Direct live Excel Online editing would require a Microsoft Office Add-in or Microsoft Graph integration.
+    </section>
+
+    <section class="grid">
+      <article class="card span-8">
+        <h2>1. Load / save workbook</h2>
+        <div class="row">
+          <label style="min-width:320px">Excel workbook
+            <input id="file-input" type="file" accept=".xlsx,.xlsm,.xlsb,.xls">
+          </label>
+          <button id="download-button" class="good" disabled>Download updated workbook</button>
+          <button id="refresh-button" class="secondary" disabled>Refresh dashboard</button>
+        </div>
+        <p id="workbook-status" class="muted">No workbook loaded yet.</p>
+      </article>
+
+      <article class="card span-4">
+        <h2>Coordinator identity</h2>
+        <label>Your name / initials
+          <input id="user-name" placeholder="JP">
+        </label>
+        <div class="row" style="margin-top:10px">
+          <button data-join="prep">Join prep FIFO</button>
+          <button data-join="qa">Join 2nd-check FIFO</button>
+        </div>
+        <div class="queue"><strong>Prep FIFO:</strong> <span id="prep-queue">empty</span></div>
+        <div class="queue"><strong>2nd-check FIFO:</strong> <span id="qa-queue">empty</span></div>
+      </article>
+
+      <article class="card span-12">
+        <h2>Pre-prep quick add</h2>
+        <div class="row">
+          <label>First name<input id="first-name"></label>
+          <label>Last name<input id="last-name"></label>
+          <label>Device<input id="device"></label>
+          <label>Loan type<input id="loan-type"></label>
+          <label>Priority
+            <select id="priority"><option value="">Regular</option><option>EXPEDITE</option><option>Funded Rental</option><option>Accessories</option><option>Requested Ship Date</option></select>
+          </label>
+          <label>Ready?<select id="ready"><option value="X">X - ready</option><option value="">Not ready</option></select></label>
+          <button id="add-row" disabled>Add row</button>
+        </div>
+      </article>
+    </section>
+
+    <section id="lanes"></section>
+    <section class="card span-12" style="margin-top:20px">
+      <h2>Workbook preview</h2>
+      <div style="overflow:auto"><table id="preview"></table></div>
+    </section>
+  </main>
+
+  <script>
+    const PRIORITIES = ["Expedites", "Funded Rentals", "Accessories", "Requested Ship Dates", "Regular Daily Queue"];
+    const READY_VALUES = new Set(["x", "yes", "y", "true", "1"]);
+    const COMPLETE_VALUES = new Set(["x", "yes", "y", "true", "1", "complete", "done"]);
+    const aliases = {
+      id: ["ID"], lastName: ["LastName", "Last Name"], firstName: ["FirstName", "First Name"], device: ["Device"], loanType: ["LoanType", "Loan Type"],
+      queueDate: ["QueueDate", "Queue Date"], vocabulary: ["Vocabulary"], notes: ["Notes"], priority: ["Priority"], readyForPrep: ["ReadyForPrep", "Ready for Prep", "Ready"],
+      prepClaimedBy: ["PrepClaimedBy", "Prep Claimed By"], prepClaimedAt: ["PrepClaimedAt", "Prep Claimed At"], prepComplete: ["PrepComplete", "Prep Complete"],
+      readyForQa: ["ReadyForQA", "Ready for QA", "ReadyFor2ndCheck", "Ready for 2nd Check"], qaClaimedBy: ["QAClaimedBy", "QA Claimed By", "SecondCheckClaimedBy"],
+      qaClaimedAt: ["QAClaimedAt", "QA Claimed At", "SecondCheckClaimedAt"], qaComplete: ["QAComplete", "QA Complete", "SecondCheckComplete"],
+      assignmentUser: ["AssignmentUser", "Assignment User"], assignmentExpires: ["AssignmentExpires", "Assignment Expires"], assignmentStatus: ["AssignmentStatus", "Assignment Status"]
+    };
+    let workbook, sheetName, aoa = [], header = [], map = {}, queueState = { prep: [], qa: [] };
+
+    const $ = (id) => document.getElementById(id);
+    const truthy = (value, complete = false) => value != null && (complete ? COMPLETE_VALUES : READY_VALUES).has(String(value).trim().toLowerCase());
+    const now = () => new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+    const user = () => { const value = $("user-name").value.trim(); if (!value) throw new Error("Enter your name / initials first."); localStorage.setItem("queueUser", value); return value; };
+
+    function buildMap() {
+      map = {};
+      for (const [field, names] of Object.entries(aliases)) {
+        const index = header.findIndex((h) => names.includes(String(h || "").trim()));
+        if (index >= 0) map[field] = index;
+      }
+    }
+    function get(row, field) { return map[field] == null ? "" : row[map[field]]; }
+    function set(row, field, value) { if (map[field] != null) row[map[field]] = value; }
+    function lane(row) {
+      const text = [get(row, "priority"), get(row, "loanType"), get(row, "notes"), get(row, "device"), get(row, "queueDate")].join(" ").toLowerCase();
+      if (text.includes("expedite") || text.includes("urgent")) return "Expedites";
+      if (text.includes("funded") || text.includes("rental")) return "Funded Rentals";
+      if (text.includes("accessor")) return "Accessories";
+      if (text.includes("requested ship") || text.includes("ship date") || text.includes("rsd")) return "Requested Ship Dates";
+      return "Regular Daily Queue";
+    }
+    function rowModel(row, index) {
+      const colH = row[7];
+      const readyValue = truthy(get(row, "readyForPrep")) ? get(row, "readyForPrep") : colH;
+      const itemLane = lane(row);
+      return {
+        row, index, lane: itemLane,
+        id: get(row, "id") || index + 1,
+        name: `${get(row, "firstName") || ""} ${get(row, "lastName") || ""}`.trim() || "No name",
+        device: get(row, "device") || "No device",
+        loan: get(row, "loanType") || "No loan type",
+        priority: get(row, "priority") || "Regular",
+        notes: get(row, "notes"),
+        prepReady: truthy(readyValue) && !truthy(get(row, "prepComplete"), true),
+        qaReady: truthy(get(row, "readyForQa")) && !truthy(get(row, "qaComplete"), true),
+        assigned: get(row, "assignmentUser"),
+        status: get(row, "assignmentStatus") || "Ready"
+      };
+    }
+    function dashboardRows() { return aoa.slice(1).map(rowModel).filter((r) => r.prepReady || r.qaReady).sort((a,b) => PRIORITIES.indexOf(a.lane) - PRIORITIES.indexOf(b.lane) || String(get(a.row,"queueDate")).localeCompare(String(get(b.row,"queueDate")))); }
+    function renderQueues() {
+      $("prep-queue").textContent = queueState.prep.length ? queueState.prep.join(" → ") : "empty";
+      $("qa-queue").textContent = queueState.qa.length ? queueState.qa.join(" → ") : "empty";
+    }
+    function joinQueue(queue) {
+      const name = user();
+      queueState[queue] = queueState[queue].filter((u) => u !== name).concat(name);
+      renderQueues();
+    }
+    function rotate(queue, name) {
+      queueState[queue] = queueState[queue].filter((u) => u !== name).concat(name);
+      renderQueues();
+    }
+    function saveQueueSheet() {
+      const rows = [["Queue", "Position", "User"]];
+      for (const q of ["prep", "qa"]) queueState[q].forEach((name, index) => rows.push([q, index + 1, name]));
+      workbook.Sheets._QueueState = XLSX.utils.aoa_to_sheet(rows);
+      if (!workbook.SheetNames.includes("_QueueState")) workbook.SheetNames.push("_QueueState");
+    }
+    function loadQueueSheet() {
+      queueState = { prep: [], qa: [] };
+      const sheet = workbook.Sheets._QueueState;
+      if (!sheet) return;
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" }).slice(1);
+      rows.forEach(([queue,, name]) => { if ((queue === "prep" || queue === "qa") && name) queueState[queue].push(String(name)); });
+    }
+    function writeMainSheet() { workbook.Sheets[sheetName] = XLSX.utils.aoa_to_sheet(aoa); saveQueueSheet(); render(); }
+    function offer(rowIndex, queue) {
+      if (!queueState[queue].length) throw new Error(`No users are in the ${queue} FIFO queue.`);
+      const row = aoa[rowIndex]; const assigned = queueState[queue][0];
+      set(row, "assignmentUser", assigned); set(row, "assignmentStatus", `Offered to ${assigned}`); set(row, "assignmentExpires", new Date(Date.now() + 120000).toISOString());
+      writeMainSheet(); alert(`Offer sent to ${assigned} for 2 minutes.`);
+    }
+    function claim(rowIndex, queue) {
+      const name = user(); const row = aoa[rowIndex];
+      if (queue === "prep") { set(row, "prepClaimedBy", name); set(row, "prepClaimedAt", now()); } else { set(row, "qaClaimedBy", name); set(row, "qaClaimedAt", now()); }
+      set(row, "assignmentUser", name); set(row, "assignmentStatus", "Claimed"); set(row, "assignmentExpires", ""); writeMainSheet();
+    }
+    function complete(rowIndex, queue) {
+      const name = user(); const row = aoa[rowIndex];
+      if (queue === "prep") { set(row, "prepClaimedBy", name); set(row, "prepClaimedAt", now()); set(row, "prepComplete", "Yes"); set(row, "readyForQa", "Yes"); set(row, "assignmentStatus", "Ready for QA"); }
+      else { set(row, "qaClaimedBy", name); set(row, "qaClaimedAt", now()); set(row, "qaComplete", "Yes"); set(row, "assignmentStatus", "Complete"); }
+      set(row, "assignmentUser", name); set(row, "assignmentExpires", ""); rotate(queue, name); writeMainSheet();
+    }
+    function skip(rowIndex, queue) { const name = user(); const row = aoa[rowIndex]; set(row, "assignmentUser", name); set(row, "assignmentStatus", "Skipped"); set(row, "assignmentExpires", ""); rotate(queue, name); writeMainSheet(); }
+
+    function render() {
+      $("download-button").disabled = !workbook; $("refresh-button").disabled = !workbook; $("add-row").disabled = !workbook;
+      renderQueues(); renderLanes(); renderPreview();
+    }
+    function renderLanes() {
+      const wrap = $("lanes"); wrap.innerHTML = ""; const rows = dashboardRows();
+      for (const priority of PRIORITIES) {
+        const laneRows = rows.filter((r) => r.lane === priority);
+        const section = document.createElement("section"); section.className = "lane";
+        section.innerHTML = `<h2>${priority}<span class="muted">${laneRows.length} order(s)</span></h2><div class="cards"></div>`;
+        const cards = section.querySelector(".cards");
+        if (!laneRows.length) cards.innerHTML = '<p class="muted">No orders in this lane right now.</p>';
+        for (const item of laneRows) {
+          const card = document.createElement("article"); card.className = "card order";
+          card.innerHTML = `<h3>${item.name} <span class="muted">#${item.id}</span></h3><p>${item.device} · ${item.loan}</p><p class="muted">Priority: ${item.priority}</p>${item.notes ? `<p>${item.notes}</p>` : ""}<p class="status">${item.status}${item.assigned ? ` — ${item.assigned}` : ""}</p><div class="actions"></div>`;
+          const actions = card.querySelector(".actions");
+          if (item.prepReady) addButtons(actions, item.index, "prep");
+          if (item.qaReady) addButtons(actions, item.index, "qa");
+          cards.appendChild(card);
+        }
+        wrap.appendChild(section);
+      }
+    }
+    function addButtons(actions, index, queue) {
+      const label = queue === "prep" ? "prep" : "2nd check";
+      [[`Offer ${label}`, () => offer(index, queue)], [`Claim ${label}`, () => claim(index, queue)], [`Complete ${label}`, () => complete(index, queue)], ["Skip", () => skip(index, queue)]].forEach(([text, fn]) => {
+        const button = document.createElement("button"); button.textContent = text; button.className = text === "Skip" ? "warn" : ""; button.onclick = () => { try { fn(); } catch (e) { alert(e.message); } }; actions.appendChild(button);
+      });
+    }
+    function renderPreview() {
+      const table = $("preview"); table.innerHTML = ""; if (!aoa.length) return;
+      const head = document.createElement("tr"); header.forEach((h) => { const th = document.createElement("th"); th.textContent = h; head.appendChild(th); }); table.appendChild(head);
+      aoa.slice(1, 26).forEach((row) => { const tr = document.createElement("tr"); header.forEach((_, i) => { const td = document.createElement("td"); td.textContent = row[i] ?? ""; tr.appendChild(td); }); table.appendChild(tr); });
+    }
+
+    $("file-input").addEventListener("change", async (event) => {
+      const file = event.target.files[0]; if (!file) return;
+      const buffer = await file.arrayBuffer(); workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+      sheetName = workbook.SheetNames.find((name) => name !== "_QueueState") || workbook.SheetNames[0];
+      aoa = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: "" }); header = aoa[0] || []; buildMap(); loadQueueSheet();
+      $("workbook-status").textContent = `Loaded ${file.name} / sheet ${sheetName}. Make changes, then download the updated workbook.`; render();
+    });
+    $("download-button").onclick = () => { writeMainSheet(); XLSX.writeFile(workbook, "testing QUEUE - updated.xlsx"); };
+    $("refresh-button").onclick = render;
+    document.querySelectorAll("[data-join]").forEach((button) => button.onclick = () => { try { joinQueue(button.dataset.join); } catch (e) { alert(e.message); } });
+    $("add-row").onclick = () => {
+      if (!workbook) return; const id = String(Date.now()).slice(-8);
+      const row = new Array(header.length).fill("");
+      set(row, "id", id); set(row, "firstName", $("first-name").value.trim()); set(row, "lastName", $("last-name").value.trim()); set(row, "device", $("device").value.trim());
+      if (!get(row, "firstName") || !get(row, "lastName") || !get(row, "device")) return alert("First name, last name, and device are required.");
+      set(row, "loanType", $("loan-type").value.trim()); set(row, "priority", $("priority").value); set(row, "readyForPrep", $("ready").value); set(row, "queueDate", new Date().toISOString().slice(0,10)); set(row, "prepComplete", "No"); set(row, "readyForQa", "No"); set(row, "qaComplete", "No"); set(row, "assignmentStatus", $("ready").value ? "Ready" : "Draft");
+      aoa.push(row); writeMainSheet(); ["first-name","last-name","device","loan-type"].forEach((id) => $(id).value = "");
+    };
+    $("user-name").value = localStorage.getItem("queueUser") || "";
+  </script>
+</body>
+</html>

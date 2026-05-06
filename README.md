@@ -1,10 +1,25 @@
 # Trials Queue Dashboard
 
-This is a **local desktop UI**, not a hosted website. Each user runs the app on their computer and the app reads/writes the shared `testing QUEUE.xlsx` workbook directly. That keeps Excel/SharePoint as the backend/source of truth while giving the two teams different screens.
+This project now includes two no-server options: a **browser-openable dashboard** for teams using Excel for web and an optional **local desktop UI** for machines that can run Python/Tkinter. Excel/SharePoint remains the backend/source of truth while the two teams get different screens.
+
+
+## If you use Excel in a web browser
+
+Use `browser-dashboard.html` first. It opens in Chrome/Edge as a normal browser page and does not require Python or a desktop window.
+
+1. In Excel for web, use **File > Save As > Download a Copy** for `testing QUEUE.xlsx`.
+2. Double-click `browser-dashboard.html` from this repo.
+3. Click **Excel workbook** and select the downloaded `.xlsx` file.
+4. Use the Pre-prep quick-add form or Device Coordinator queue buttons.
+5. Click **Download updated workbook**.
+6. Upload/replace the workbook in SharePoint/OneDrive so the web version has the edits.
+
+Important limitation: a plain browser page cannot directly save into an already-open Excel Online workbook. For true live editing inside Excel for web, the next step would be a Microsoft Office Add-in or Microsoft Graph integration. This repo currently provides the no-server browser file workflow plus the optional local desktop Python app.
 
 ## What it does
 
 - Uses the Excel workbook as the backend.
+- Adds `browser-dashboard.html` for users who work from Excel in a web browser and cannot open the desktop app.
 - Gives Pre-prep a local form for adding line items while still allowing the team to edit the workbook directly in SharePoint.
 - Lets Pre-prep mark `Ready for Prep` with `X` so coordinators can see the row.
 - Gives Device Coordinators a filtered dashboard showing only prep-ready or 2nd-check-ready rows.

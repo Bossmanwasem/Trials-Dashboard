@@ -44,7 +44,8 @@ class ProfileDialog(ctk.CTkToplevel):
         self.store = store
         self.profile: UserProfile | None = None
         self.title("User Profile")
-        self.geometry("420x260")
+        self.geometry("460x360")
+        self.minsize(460, 360)
         self.resizable(False, False)
         self.transient(parent)
         self.grab_set()
@@ -68,8 +69,27 @@ class ProfileDialog(ctk.CTkToplevel):
         self.name_entry.pack(padx=24, pady=(2, 10))
         ctk.CTkLabel(self, text="Initials").pack(anchor="w", padx=150)
         self.initials_entry.pack(padx=24, pady=(2, 16))
-        ctk.CTkButton(self, text="Save Profile", command=self.save_profile).pack(pady=(0, 20))
 
+        button_row = ctk.CTkFrame(self, fg_color="transparent")
+        button_row.pack(fill="x", padx=24, pady=(8, 24))
+        button_row.grid_columnconfigure(0, weight=1)
+        button_row.grid_columnconfigure(1, weight=1)
+        if current:
+            ctk.CTkButton(button_row, text="Cancel", command=self.destroy, fg_color="#596579").grid(
+                row=0, column=0, sticky="ew", padx=(0, 8)
+            )
+            save_text = "Save Profile"
+        else:
+            save_text = "Create Profile"
+        ctk.CTkButton(button_row, text=save_text, command=self.save_profile).grid(
+            row=0,
+            column=1 if current else 0,
+            columnspan=1 if current else 2,
+            sticky="ew",
+            padx=(8, 0) if current else 0,
+        )
+
+        self.bind("<Return>", lambda _event: self.save_profile())
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.name_entry.focus_set()
 

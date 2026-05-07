@@ -67,7 +67,7 @@ If your workstation has multiple Python versions, `py -3.11` can be replaced wit
 python app.py
 ```
 
-On first launch, the app asks for your name and initials. The profile is saved locally on that computer:
+On first launch, the app asks for your name and initials. Click **Create Profile** to save the profile file and close the setup screen. The profile is saved locally on that computer:
 
 - Windows: `%LOCALAPPDATA%\DailyQueueDashboard\profile.json`
 - Other platforms: `~/.daily_queue_dashboard/profile.json`

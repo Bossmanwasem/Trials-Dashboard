@@ -30,6 +30,9 @@ COLUMN_MAP = {
     "queue_date": "E",
     "vocabulary": "F",
     "notes": "G",
+    "ready_for_prep": "H",
+    "prep_initials": "I",
+    "qa_done": "J",
 }
 
 # Destination columns updated by button actions per the MVP requirements.

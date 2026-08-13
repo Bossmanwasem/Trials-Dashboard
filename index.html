@@ -53,16 +53,8 @@
   <dialog id="codeModal"><form method="dialog" class="section bulk" onsubmit="addGipodCodes(event)"><div class="dialog-head"><div><div class="eyebrow">Code inventory</div><h3>Bulk import GIPOD codes</h3></div><button class="icon-btn" value="cancel" aria-label="Close">×</button></div><p class="help">Copy the GIPOD code column from Excel and paste it below. Duplicate and blank codes will be skipped.</p><div class="field"><label for="codeRows">GIPOD codes</label><textarea id="codeRows" placeholder="Paste one code per row…" oninput="previewGipodCodes()"></textarea></div><div id="codeMessage" class="muted"></div><div class="footer"><button class="btn secondary" value="cancel">Cancel</button><button class="btn" type="submit">Import codes</button></div></form></dialog>
 
   <script>
-    const files=[
-      {id:1,last:'Lerum',first:'Jameson T',device:'Talk Pad Wego 10',deviceNumber:'DEV-1042',gipod:'GIP-3815',cameraNumber:'CAM-220',loan:'CL Replacement',date:'2026-05-04',vocab:'',notes:'',priority:'EXPEDITE',lane:'Expedites',expires:'2026-08-20',status:'Ready for Prep',crm:'https://example.com/crm/files/10001'},
-      {id:2,last:'Boykin',first:'Areyah L',device:'Wego 7A',deviceNumber:'DEV-1088',gipod:'GIP-3921',cameraNumber:'CAM-237',loan:'FR',date:'2026-05-05',vocab:'P2G',notes:'',priority:'Normal',lane:'Funded Rentals',expires:'2026-08-18',status:'Complete',crm:'https://example.com/crm/files/10002'},
-      {id:3,last:'Graupe',first:'Louise A.',device:'Wego 10A',deviceNumber:'DEV-1096',gipod:'',cameraNumber:'CAM-241',loan:'SL',date:'2026-05-05',vocab:'Grid 3',notes:'Needs second check',priority:'EXPEDITE',lane:'Expedites',expires:'2026-08-22',status:'Ready for Pre-Prep',crm:'https://example.com/crm/files/10003'},
-      {id:4,last:'Santos',first:'Mia',device:'Accent 1000',deviceNumber:'DEV-1103',gipod:'GIP-3974',cameraNumber:'CAM-245',loan:'Trial',date:'2026-08-08',vocab:'Unity',notes:'Keyguard requested',priority:'Normal',lane:'Daily Queue',expires:'2026-08-27',status:'Ready for Pre-Prep',crm:'https://example.com/crm/files/10004'},
-      {id:5,last:'Nguyen',first:'Eli',device:'Wego 13A',deviceNumber:'DEV-1114',gipod:'GIP-4012',cameraNumber:'CAM-252',loan:'SL',date:'2026-08-10',vocab:'TC',notes:'Paperwork pending',priority:'Normal',lane:'Expedites',expires:'2026-08-25',status:'Ready for Prep',crm:'https://example.com/crm/files/10005'},
-      {id:6,last:'Wells',first:'Avery',device:'Keyguard and Carry Case',deviceNumber:'ACC-0612',gipod:'GIP-4028',cameraNumber:'',loan:'Accessory',date:'2026-08-11',vocab:'',notes:'Accessory order ready',priority:'Normal',lane:'Accessories',expires:'2026-08-29',status:'Ready for Prep',crm:'https://example.com/crm/files/10006'},
-      {id:7,last:'Diaz',first:'Noah',device:'NovaChat 10',deviceNumber:'DEV-1121',gipod:'GIP-4040',cameraNumber:'CAM-258',loan:'Trial',date:'2026-08-12',vocab:'WordPower',notes:'',priority:'Normal',lane:'Daily Queue',expires:'2026-08-30',status:'Ready for Prep',crm:'https://example.com/crm/files/10007'}
-    ];
-    const gipodCodes=[{code:'GIP-5101',usedOn:''},{code:'GIP-5102',usedOn:''},{code:'GIP-5103',usedOn:''}];
+    const files=[];
+    const gipodCodes=[];
     let view='dashboard',prepTab='files',bulkLinks=[];
     const $=id=>document.getElementById(id);
     function esc(value){return String(value??'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]))}

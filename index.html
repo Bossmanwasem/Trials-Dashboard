@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trials Client & Device Dashboard Mockup</title>
+  <style>
+    :root{--bg:#f5f7fb;--panel:#fff;--ink:#172033;--muted:#6b7280;--brand:#2563eb;--brand2:#0f172a;--line:#e5e7eb;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--purple:#7c3aed;--shadow:0 14px 35px rgba(15,23,42,.08);--radius:18px}
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+    header{background:linear-gradient(135deg,#0f172a,#1d4ed8);color:white;padding:28px 34px} h1{margin:0;font-size:30px} header p{margin:8px 0 0;color:#dbeafe}.wrap{display:grid;grid-template-columns:280px 1fr;gap:22px;padding:22px}.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+    aside{padding:18px;height:calc(100vh - 120px);position:sticky;top:18px}.btn{border:0;border-radius:12px;background:var(--brand);color:white;padding:11px 14px;font-weight:700;cursor:pointer}.btn.secondary{background:#eef2ff;color:#1d4ed8}.btn.dark{background:var(--brand2)}.btn.ghost{background:white;color:var(--brand);border:1px solid #bfdbfe}.btn.small{padding:7px 10px;font-size:12px}.nav button{display:block;width:100%;text-align:left;margin:8px 0;background:#f8fafc;color:#334155;border:1px solid var(--line)}.nav button.active{background:#dbeafe;border-color:#93c5fd;color:#1e3a8a}.user-list{margin-top:18px}.user{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;cursor:pointer}.user.active,.user:hover{background:#eff6ff}.avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#dbeafe;color:#1d4ed8;font-weight:800}.main{display:grid;gap:18px}.toolbar{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:16px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.stat{padding:18px}.stat b{font-size:30px}.stat span{display:block;color:var(--muted);font-size:13px}.grid{display:grid;grid-template-columns:1.2fr .8fr;gap:18px}.section{padding:18px} h2,h3{margin:0 0 12px}.table{width:100%;border-collapse:collapse}.table th{font-size:12px;color:var(--muted);text-align:left;border-bottom:1px solid var(--line);padding:10px}.table td{padding:12px 10px;border-bottom:1px solid #f1f5f9;font-size:14px}.pill{display:inline-flex;padding:5px 9px;border-radius:999px;font-weight:800;font-size:12px}.expedite{background:#fee2e2;color:#991b1b}.ready{background:#dcfce7;color:#166534}.qa{background:#fef3c7;color:#92400e}.prep{background:#ede9fe;color:#5b21b6}.open{background:#e0f2fe;color:#075985}.form{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.form input,.form select,.form textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:10px;background:white}.form textarea{grid-column:1/-1;min-height:78px}.hide{display:none}.device-card{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0;background:#fbfdff}.muted{color:var(--muted)}.kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.lane{background:#f8fafc;border:1px dashed #cbd5e1;border-radius:16px;padding:12px;min-height:260px}.client-card{background:white;border:1px solid var(--line);border-left:5px solid var(--brand);border-radius:14px;padding:12px;margin:10px 0}.client-card.ex{border-left-color:var(--bad)}.topline{display:flex;justify-content:space-between;gap:10px}.search{max-width:340px}.empty{padding:28px;text-align:center;color:var(--muted);border:1px dashed #cbd5e1;border-radius:14px;background:#f8fafc}@media(max-width:900px){.wrap,.grid{grid-template-columns:1fr}aside{height:auto;position:static}.stats,.kanban{grid-template-columns:1fr}.form{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <header><h1>Trials Dashboard Mockup</h1><p>HTML preview based on the XLSX queue fields: clients, files, prep, QA, assignment owner, expiration, and status.</p></header>
+  <div class="wrap">
+    <aside class="card">
+      <button class="btn" onclick="showModal()">+ Add User</button>
+      <div class="nav">
+        <button id="nav-dashboard" class="btn active" onclick="setView('dashboard')">User Dashboard</button>
+        <button id="nav-prep" class="btn" onclick="setView('prep')">Prep Assignment View</button>
+        <button id="nav-files" class="btn" onclick="setView('files')">All Client Files</button>
+      </div>
+      <div class="user-list"><h3>Users</h3><div id="users"></div></div>
+    </aside>
+    <main class="main">
+      <section class="card toolbar"><div><h2 id="viewTitle">Dashboard</h2><div class="muted" id="viewSub"></div></div><input id="search" class="search" placeholder="Search client, device, loan type..." oninput="render()" /></section>
+      <section class="stats" id="stats"></section>
+      <section class="grid" id="dashboardView"><div class="card section"><h3>Assigned Client Files</h3><table class="table"><thead><tr><th>Client</th><th>Device</th><th>Loan</th><th>Status</th><th>Due</th></tr></thead><tbody id="assignedRows"></tbody></table></div><div class="card section"><h3>Workload</h3><div id="workload"></div></div></section>
+      <section class="card section hide" id="prepView"><h3>Prep Team Device Assignment</h3><p class="muted">Prep can claim a device/file, update prep status, and assign it to a user's personal dashboard.</p><div class="kanban" id="prepLanes"></div></section>
+      <section class="card section hide" id="filesView"><h3>All Client Files</h3><div id="fileCards"></div></section>
+    </main>
+  </div>
+  <dialog id="userModal" style="border:0;border-radius:18px;box-shadow:var(--shadow);width:min(520px,92vw)"><form method="dialog" class="section"><h3>Add dashboard user</h3><div class="form"><input id="newName" placeholder="Full name" required><select id="newRole"><option>Coordinator</option><option>Prep Team</option><option>QA Team</option><option>Manager</option></select></div><p><button class="btn" onclick="addUser(event)">Create User</button> <button class="btn secondary">Cancel</button></p></form></dialog>
+  <script>
+    const users=[{id:'u1',name:'Jordan Patel',role:'Prep Team'},{id:'u2',name:'Morgan Lee',role:'Coordinator'},{id:'u3',name:'Riley Chen',role:'QA Team'}];
+    const files=[
+      {id:1,last:'Lerum *F2F*',first:'Jameson T',device:'Talk Pad Wego 10',loan:'CL Replacement',date:'2026-05-04',vocab:'',notes:'',priority:'EXPEDITE',prep:'No',qa:'Yes',owner:'u2',expires:'2026-08-20',status:'Complete'},
+      {id:2,last:'Boykin',first:'Areyah L',device:'Wego 7A',loan:'SL',date:'2026-05-05',vocab:'P2G',notes:'',priority:'EXPEDITE',prep:'Yes',qa:'Yes',owner:'u3',expires:'2026-08-18',status:'Ready for QA'},
+      {id:3,last:'Graupe',first:'Louise A.',device:'Wego 10A',loan:'SL',date:'2026-05-05',vocab:'TC',notes:'Needs second check',priority:'EXPEDITE',prep:'No',qa:'No',owner:null,expires:'2026-08-22',status:'Needs Prep'},
+      {id:4,last:'Santos',first:'Mia',device:'Accent 1000',loan:'Trial',date:'2026-08-08',vocab:'Unity',notes:'Keyguard requested',priority:'Normal',prep:'No',qa:'No',owner:null,expires:'2026-08-27',status:'Ready for Prep'},
+      {id:5,last:'Nguyen',first:'Eli',device:'Wego 13A',loan:'SL',date:'2026-08-10',vocab:'TC',notes:'Paperwork pending',priority:'Normal',prep:'Yes',qa:'No',owner:'u2',expires:'2026-08-25',status:'Prep Complete'}
+    ];
+    let selected='u2', view='dashboard';
+    const $=id=>document.getElementById(id), userName=id=>(users.find(u=>u.id===id)||{}).name||'Unassigned';
+    function statusClass(f){return f.priority==='EXPEDITE'?'expedite':f.status.includes('QA')?'qa':f.status.includes('Prep')?'prep':f.status==='Complete'?'ready':'open'}
+    function filtered(){const q=$('search').value.toLowerCase();return files.filter(f=>(f.first+' '+f.last+' '+f.device+' '+f.loan+' '+f.status).toLowerCase().includes(q))}
+    function setView(v){view=v;['dashboard','prep','files'].forEach(x=>$('nav-'+x).classList.toggle('active',x===v));render()}
+    function renderUsers(){ $('users').innerHTML=users.map(u=>`<div class="user ${u.id===selected?'active':''}" onclick="selected='${u.id}';render()"><div class="avatar">${u.name.split(' ').map(n=>n[0]).join('')}</div><div><b>${u.name}</b><div class="muted">${u.role}</div></div></div>`).join('') }
+    function renderStats(list){const assigned=files.filter(f=>f.owner===selected).length;const unassigned=files.filter(f=>!f.owner).length;const prep=files.filter(f=>f.prep==='No').length;const expedite=files.filter(f=>f.priority==='EXPEDITE').length;$('stats').innerHTML=[['My Files',assigned],['Unassigned',unassigned],['Need Prep',prep],['Expedites',expedite]].map(s=>`<div class="card stat"><b>${s[1]}</b><span>${s[0]}</span></div>`).join('')}
+    function renderDashboard(){const mine=filtered().filter(f=>f.owner===selected);$('assignedRows').innerHTML=mine.map(f=>`<tr><td><b>${f.last}</b>, ${f.first}</td><td>${f.device}</td><td>${f.loan}</td><td><span class="pill ${statusClass(f)}">${f.status}</span></td><td>${f.expires}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">No assigned files.</td></tr>';$('workload').innerHTML=users.map(u=>`<div class="device-card"><div><b>${u.name}</b><div class="muted">${u.role}</div></div><span class="pill open">${files.filter(f=>f.owner===u.id).length} files</span></div>`).join('')}
+    function assign(id,user){const f=files.find(x=>x.id===id);f.owner=user;f.status=f.prep==='Yes'?'Prep Complete':'Assigned for Prep';render()}
+    function togglePrep(id){const f=files.find(x=>x.id===id);f.prep=f.prep==='Yes'?'No':'Yes';f.status=f.prep==='Yes'?'Prep Complete':'Needs Prep';render()}
+    function renderPrep(){const lanes=[['Need Prep',f=>f.prep==='No'],['Prep Complete',f=>f.prep==='Yes'&&f.qa==='No'],['Ready / QA',f=>f.qa==='Yes']];$('prepLanes').innerHTML=lanes.map(([name,fn])=>`<div class="lane"><h3>${name}</h3>${filtered().filter(fn).map(f=>`<div class="client-card ${f.priority==='EXPEDITE'?'ex':''}"><div class="topline"><b>${f.last}, ${f.first}</b><span class="pill ${statusClass(f)}">${f.priority}</span></div><div>${f.device}</div><div class="muted">${f.loan} • ${f.vocab||'No vocab listed'} • Owner: ${userName(f.owner)}</div><p><select onchange="assign(${f.id},this.value)"><option value="">Assign user...</option>${users.map(u=>`<option value="${u.id}" ${f.owner===u.id?'selected':''}>${u.name}</option>`).join('')}</select> <button class="btn small secondary" onclick="togglePrep(${f.id})">Toggle Prep</button></p></div>`).join('')||'<div class="empty">No files in this lane</div>'}</div>`).join('')}
+    function renderFiles(){ $('fileCards').innerHTML=filtered().map(f=>`<div class="client-card ${f.priority==='EXPEDITE'?'ex':''}"><div class="topline"><h3>${f.last}, ${f.first}</h3><span class="pill ${statusClass(f)}">${f.status}</span></div><div><b>Device:</b> ${f.device} &nbsp; <b>Loan:</b> ${f.loan} &nbsp; <b>Queue:</b> ${f.date}</div><div class="muted">Vocabulary: ${f.vocab||'—'} | Notes: ${f.notes||'—'} | Dashboard: ${userName(f.owner)}</div></div>`).join('') }
+    function render(){renderUsers();renderStats();$('dashboardView').classList.toggle('hide',view!=='dashboard');$('prepView').classList.toggle('hide',view!=='prep');$('filesView').classList.toggle('hide',view!=='files');$('viewTitle').textContent=view==='prep'?'Prep Assignment View':view==='files'?'All Client Files':`${userName(selected)} Dashboard`;$('viewSub').textContent=view==='dashboard'?'Each user has a personal queue of assigned client files and devices.':'Use this mockup to preview workflow and layout changes.';renderDashboard();renderPrep();renderFiles()}
+    function showModal(){ $('userModal').showModal() } function addUser(e){e.preventDefault();const name=$('newName').value.trim();if(!name)return;users.push({id:'u'+Date.now(),name,role:$('newRole').value});$('newName').value='';$('userModal').close();render()}
+    render();
+  </script>
+</body>
+</html>

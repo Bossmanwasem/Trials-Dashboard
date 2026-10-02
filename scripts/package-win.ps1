@@ -91,7 +91,7 @@ exit /b 0
 $stagePackage = @{
   name = 'trials-operations-dashboard'
   version = $appVersion
-  description = 'Windows desktop trials operations dashboard backed by Supabase Realtime.'
+  description = 'Windows desktop trials operations dashboard backed by self-hosted Node.js and SQLite.'
   main = 'electron/main.cjs'
   dependencies = @{}
   devDependencies = @{}

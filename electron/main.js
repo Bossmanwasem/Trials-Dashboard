@@ -134,7 +134,22 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(() => {
+async function ensureLocalServer() {
+  try {
+    const response = await fetch('http://127.0.0.1:47831/api/health');
+    if (response.ok) return;
+  } catch { /* Start the bundled server below. */ }
+  process.env.TRIALS_DATA_DIR ||= app.getPath('userData');
+  const { createServer } = await import('../server/api.js');
+  await new Promise((resolve, reject) => {
+    const server = createServer();
+    server.once('error', reject);
+    server.listen(47831, '127.0.0.1', resolve);
+  });
+}
+
+app.whenReady().then(async () => {
+  await ensureLocalServer();
   createWindow();
   setTimeout(() => checkForUpdates(true), 3000);
 });

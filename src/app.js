@@ -1,8 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
+import { API_URL, createApiClient } from './apiClient.js';
 import './styles.css';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || localStorage.getItem('supabaseUrl') || '';
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || localStorage.getItem('supabaseAnonKey') || '';
 
 const laneNames = ['Expedites', 'Funded Rentals', 'Ship Requested', 'Accessories', 'Daily Queue'];
 const dashboardLayouts = {
@@ -32,7 +30,7 @@ const statusSteps = {
   Complete: 'Shipped'
 };
 
-let supabase = null;
+let api = null;
 let files = [];
 let gipodCodes = [];
 let gipodRequests = [];
@@ -531,28 +529,6 @@ function dialogs() {
   `;
 }
 
-function renderConfig() {
-  document.documentElement.dataset.theme = theme;
-  document.querySelector('#app').innerHTML = `
-    <section class="card config">
-      <div class="eyebrow">Supabase setup</div>
-      <h1>Connect Trials Dashboard</h1>
-      <p class="notice">Add your free Supabase project URL and publishable/anon key. The schema in <b>supabase/schema.sql</b> must be installed first.</p>
-      <form id="configForm" class="form">
-        <div class="field"><label for="configUrl">Supabase URL</label><input id="configUrl" value="${esc(SUPABASE_URL)}" placeholder="https://project-ref.supabase.co" required></div>
-        <div class="field"><label for="configKey">Publishable or anon key</label><input id="configKey" value="${esc(SUPABASE_KEY)}" required></div>
-        <div class="footer"><button class="btn" type="submit">Save and connect</button></div>
-      </form>
-    </section>
-  `;
-  $('configForm').addEventListener('submit', (event) => {
-    event.preventDefault();
-    localStorage.setItem('supabaseUrl', $('configUrl').value.trim());
-    localStorage.setItem('supabaseAnonKey', $('configKey').value.trim());
-    location.reload();
-  });
-}
-
 function renderLogin() {
   const rememberedUser = readRememberedUser();
   document.documentElement.dataset.theme = theme;
@@ -590,7 +566,7 @@ function authPayload() {
 }
 
 function cleanRpcMessage(message) {
-  return (message || 'Supabase error').replace(/^ERROR:\s*/i, '');
+  return (message || 'Server error').replace(/^ERROR:\s*/i, '');
 }
 
 async function submitAuth(event) {
@@ -605,7 +581,7 @@ async function submitAuth(event) {
   $('authMessage').className = 'muted full';
   $('authMessage').textContent = 'Logging in...';
 
-  const { data, error } = await supabase.rpc('login_app_user', payload);
+  const { data, error } = await api.rpc('login_app_user', payload);
   $('authSubmit').disabled = false;
 
   if (error) {
@@ -635,22 +611,18 @@ async function submitAuth(event) {
 }
 
 async function markCurrentUserLoggedIn(isLoggedIn, keepalive = false, user = currentUser) {
-  if (!user?.id || !SUPABASE_URL || !SUPABASE_KEY) return;
+  if (!user?.id) return;
   const payload = { p_user_id: user.id, p_logged_in: isLoggedIn };
   if (keepalive && window.fetch) {
-    fetch(`${SUPABASE_URL}/rest/v1/rpc/set_app_user_login_status`, {
+    fetch(`${API_URL}/api/rpc/set_app_user_login_status`, {
       method: 'POST',
-      headers: {
-        apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
       keepalive: true
     }).catch(() => {});
     return;
   }
-  const { error } = await supabase.rpc('set_app_user_login_status', payload);
+  const { error } = await api.rpc('set_app_user_login_status', payload);
   if (error) console.error('Unable to update login status:', error);
 }
 
@@ -784,8 +756,8 @@ function setConnection(state, detail = '') {
   text.textContent = state === 'Refreshing' ? (connectionState === 'Connecting' ? 'Live' : connectionState) : connectionState;
 }
 
-function createSupabaseClient() {
-  supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+function createApiConnection() {
+  api = createApiClient();
 }
 
 function resultError(result) {
@@ -793,7 +765,7 @@ function resultError(result) {
   return result?.error || null;
 }
 
-function isRecoverableSupabaseError(error) {
+function isRecoverableApiError(error) {
   const message = `${error?.message || error?.name || error || ''}`.toLowerCase();
   const status = Number(error?.status || error?.code || 0);
   return [408, 429, 500, 502, 503, 504].includes(status) ||
@@ -806,13 +778,13 @@ function isRecoverableSupabaseError(error) {
     message.includes('abort');
 }
 
-async function recoverSupabaseConnection(reason = 'Connection recovered') {
+async function recoverApiConnection(reason = 'Connection recovered') {
   if (recoveryPromise) return recoveryPromise;
   recoveryPromise = (async () => {
     setConnection('Refreshing', 'Reconnecting');
     unsubscribeRealtime();
     unsubscribePresence();
-    createSupabaseClient();
+    createApiConnection();
     if (currentUser?.id) await markCurrentUserLoggedIn(true);
     subscribeRealtime();
     subscribePresence();
@@ -824,13 +796,13 @@ async function recoverSupabaseConnection(reason = 'Connection recovered') {
   return recoveryPromise;
 }
 
-async function withSupabaseRetry(operation) {
+async function withApiRetry(operation) {
   let result;
   try {
     result = await operation();
   } catch (error) {
-    if (!isRecoverableSupabaseError(error)) throw error;
-    await recoverSupabaseConnection(error.message || 'Supabase reconnect');
+    if (!isRecoverableApiError(error)) throw error;
+    await recoverApiConnection(error.message || 'server reconnect');
     try {
       return await operation();
     } catch (retryError) {
@@ -838,8 +810,8 @@ async function withSupabaseRetry(operation) {
     }
   }
   const error = resultError(result);
-  if (error && isRecoverableSupabaseError(error)) {
-    await recoverSupabaseConnection(error.message || 'Supabase reconnect');
+  if (error && isRecoverableApiError(error)) {
+    await recoverApiConnection(error.message || 'server reconnect');
     try {
       return await operation();
     } catch (retryError) {
@@ -855,7 +827,7 @@ function scheduleRealtimeReconnect(reason) {
   reconnectTimer = window.setTimeout(async () => {
     reconnectTimer = null;
     try {
-      await recoverSupabaseConnection(reason);
+      await recoverApiConnection(reason);
       await loadData();
     } catch (error) {
       showError(error);
@@ -865,13 +837,13 @@ function scheduleRealtimeReconnect(reason) {
 
 async function loadData() {
   setConnection(connectionState === 'Live' ? 'Refreshing' : 'Connecting', connectionState === 'Live' ? 'Live' : 'Loading queue');
-  const loadResults = await withSupabaseRetry(() => Promise.all([
-    supabase.from('trial_files').select('*').order('created_at', { ascending: true }).order('id', { ascending: true }),
-    supabase.from('gipod_codes').select('*').order('created_at', { ascending: true }),
-    supabase.from('gipod_code_requests').select('*').order('requested_at', { ascending: false }),
-    supabase.rpc('list_device_requests', { p_session_token: currentUser.deviceRequestToken || '' }),
-    supabase.rpc('list_device_specialists'),
-    supabase.rpc('list_device_coordinators')
+  const loadResults = await withApiRetry(() => Promise.all([
+    api.from('trial_files').select('*').order('created_at', { ascending: true }).order('id', { ascending: true }),
+    api.from('gipod_codes').select('*').order('created_at', { ascending: true }),
+    api.from('gipod_code_requests').select('*').order('requested_at', { ascending: false }),
+    api.rpc('list_device_requests', { p_session_token: currentUser.deviceRequestToken || '' }),
+    api.rpc('list_device_specialists'),
+    api.rpc('list_device_coordinators')
   ]));
   if (!Array.isArray(loadResults)) throw resultError(loadResults) || new Error('Unable to reload queue.');
   const [fileResult, codeResult, requestResult, deviceRequestResult, specialistResult, coordinatorResult] = loadResults;
@@ -911,10 +883,10 @@ async function loadData() {
 }
 
 async function loadLeadDashboardData() {
-  const leadResults = await withSupabaseRetry(() => Promise.all([
-    supabase.rpc('list_team_user_activity', { p_actor_id: currentUser.id }),
-    supabase.from('app_shipment_activity').select('*').order('shipped_date', { ascending: false }).order('shipped_at', { ascending: false }),
-    supabase.from('app_eod_cleanups').select('*').order('cleanup_date', { ascending: false }).order('created_at', { ascending: false })
+  const leadResults = await withApiRetry(() => Promise.all([
+    api.rpc('list_team_user_activity', { p_actor_id: currentUser.id }),
+    api.from('app_shipment_activity').select('*').order('shipped_date', { ascending: false }).order('shipped_at', { ascending: false }),
+    api.from('app_eod_cleanups').select('*').order('cleanup_date', { ascending: false }).order('created_at', { ascending: false })
   ]));
   if (!Array.isArray(leadResults)) throw resultError(leadResults) || new Error('Unable to reload lead dashboard.');
   const [activityResult, shipmentResult, cleanupResult] = leadResults;
@@ -938,7 +910,7 @@ function rowToSpecialist(row) {
 }
 
 async function loadSpecialists() {
-  const { data, error } = await supabase.rpc('list_device_specialists');
+  const { data, error } = await api.rpc('list_device_specialists');
   if (error) return showError(error);
   specialists = data.map(rowToSpecialist);
 }
@@ -1026,7 +998,7 @@ function mergeLoginStatusRows(rows = []) {
 
 async function loadUsers(shouldRender = true) {
   if (!canManageUsers()) return;
-  const { data, error } = await supabase.rpc('list_app_users', { p_actor_id: currentUser.id });
+  const { data, error } = await api.rpc('list_app_users', { p_actor_id: currentUser.id });
   if (error) return showError(error);
   users = data.map(rowToUser);
   if (shouldRender) renderUsers();
@@ -1036,8 +1008,8 @@ async function loadProfile(userId = selectedProfileId || currentUser.id) {
   if (!userId) return;
   selectedProfileId = userId;
   const [profileResult, activityResult] = await Promise.all([
-    supabase.rpc('get_app_user_profile', { p_actor_id: currentUser.id, p_user_id: userId }),
-    supabase.rpc('list_app_user_activity', { p_actor_id: currentUser.id, p_user_id: userId })
+    api.rpc('get_app_user_profile', { p_actor_id: currentUser.id, p_user_id: userId }),
+    api.rpc('list_app_user_activity', { p_actor_id: currentUser.id, p_user_id: userId })
   ]);
   if (profileResult.error) return showError(profileResult.error);
   if (activityResult.error) return showError(activityResult.error);
@@ -1047,7 +1019,7 @@ async function loadProfile(userId = selectedProfileId || currentUser.id) {
 }
 
 async function loadFileLogs(fileId) {
-  const { data, error } = await supabase
+  const { data, error } = await api
     .from('app_file_logs')
     .select('*')
     .eq('file_id', fileId)
@@ -1059,7 +1031,7 @@ async function loadFileLogs(fileId) {
 
 function subscribeRealtime() {
   unsubscribeRealtime();
-  realtimeChannel = supabase
+  realtimeChannel = api
     .channel(`trials-dashboard-db-changes-${Date.now()}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'trial_files' }, loadData)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'gipod_codes' }, loadData)
@@ -1074,8 +1046,8 @@ function subscribeRealtime() {
 }
 
 function unsubscribeRealtime() {
-  if (!supabase || !realtimeChannel) return;
-  supabase.removeChannel(realtimeChannel);
+  if (!api || !realtimeChannel) return;
+  api.removeChannel(realtimeChannel);
   realtimeChannel = null;
 }
 
@@ -1117,7 +1089,7 @@ function subscribePresence() {
   unsubscribePresence();
   if (!currentUser?.id) return;
   presenceSynced = false;
-  presenceChannel = supabase
+  presenceChannel = api
     .channel('trials-dashboard-presence', { config: { presence: { key: currentPresenceKey() } } })
     .on('presence', { event: 'sync' }, applyPresenceState)
     .on('presence', { event: 'join' }, applyPresenceState)
@@ -1137,9 +1109,9 @@ function subscribePresence() {
 }
 
 function unsubscribePresence() {
-  if (!supabase || !presenceChannel) return;
+  if (!api || !presenceChannel) return;
   presenceChannel.untrack().catch(() => {});
-  supabase.removeChannel(presenceChannel);
+  api.removeChannel(presenceChannel);
   presenceChannel = null;
   presenceSynced = false;
   onlineUserIds = new Set();
@@ -1147,7 +1119,7 @@ function unsubscribePresence() {
 
 async function refreshLoginStatuses(shouldRender = true) {
   if (!canManageUsers()) return;
-  const { data, error } = await withSupabaseRetry(() => supabase.rpc('list_app_user_login_statuses', { p_actor_id: currentUser.id }));
+  const { data, error } = await withApiRetry(() => api.rpc('list_app_user_login_statuses', { p_actor_id: currentUser.id }));
   if (error) return showError(error);
   mergeLoginStatusRows(data || []);
   if (shouldRender && view === 'users') renderUsers();
@@ -1171,14 +1143,14 @@ function stopLoginStatusRefresh() {
 function startHeartbeat() {
   stopHeartbeat();
   heartbeatTimer = window.setInterval(async () => {
-    if (!currentUser || !supabase) return;
+    if (!currentUser || !api) return;
     try {
-      const result = await withSupabaseRetry(() => supabase.from('trial_files').select('id', { head: true }).limit(1));
+      const result = await withApiRetry(() => api.from('trial_files').select('id', { head: true }).limit(1));
       const error = resultError(result);
       if (error) throw error;
       if (connectionState !== 'Live') setConnection('Live');
     } catch (error) {
-      if (isRecoverableSupabaseError(error)) scheduleRealtimeReconnect('Connection reconnecting');
+      if (isRecoverableApiError(error)) scheduleRealtimeReconnect('Connection reconnecting');
       else console.error('Heartbeat failed:', error);
     }
   }, 30000);
@@ -1682,7 +1654,7 @@ async function claimPrepFromNotification(id) {
     preppedBy: initials,
     preppedById: currentUser.id
   };
-  const { data, error } = await withSupabaseRetry(() => supabase
+  const { data, error } = await withApiRetry(() => api
     .from('trial_files')
     .update(fileToRow({ ...file, ...patch }))
     .eq('id', id)
@@ -2168,7 +2140,7 @@ async function claimFile(id) {
 
 async function updateUserRole(userId, role) {
   if (!canManageUsers() || !roles.includes(role)) return;
-  const { error } = await supabase.rpc('update_app_user_role', {
+  const { error } = await api.rpc('update_app_user_role', {
     p_actor_id: currentUser.id,
     p_user_id: userId,
     p_role: role
@@ -2189,7 +2161,7 @@ async function createUser(event) {
     alert('Enter first name, last name, and a unique 4-digit PIN.');
     return;
   }
-  const { error } = await supabase.rpc('create_app_user', {
+  const { error } = await api.rpc('create_app_user', {
     p_actor_id: currentUser.id,
     p_first_name: firstName,
     p_last_name: lastName,
@@ -2207,7 +2179,7 @@ async function deleteUser(userId) {
   const user = users.find((item) => item.id === userId);
   if (!user || user.id === currentUser.id) return;
   if (!confirm(`Remove ${user.firstName} ${user.lastName}? This will remove their login and profile history.`)) return;
-  const { error } = await supabase.rpc('delete_app_user', {
+  const { error } = await api.rpc('delete_app_user', {
     p_actor_id: currentUser.id,
     p_user_id: userId
   });
@@ -2231,7 +2203,7 @@ async function resetUserPin(userId) {
     alert('Enter a new PIN with exactly 4 digits.');
     return;
   }
-  const { error } = await supabase.rpc('update_app_user_pin', {
+  const { error } = await api.rpc('update_app_user_pin', {
     p_actor_id: currentUser.id,
     p_user_id: userId,
     p_pin: pin
@@ -2254,7 +2226,7 @@ async function changeOwnPin() {
     alert('Both PIN fields must be exactly 4 digits.');
     return;
   }
-  const { data, error } = await supabase.rpc('update_own_app_user_pin', {
+  const { data, error } = await api.rpc('update_own_app_user_pin', {
     p_user_id: currentUser.id,
     p_current_pin: currentPin,
     p_new_pin: newPin
@@ -2272,7 +2244,7 @@ async function saveProfileSchedule(userId) {
   document.querySelectorAll('[data-schedule-day]').forEach((input) => {
     schedule[input.dataset.scheduleDay] = input.value.trim();
   });
-  const { data, error } = await supabase.rpc('update_app_user_schedule', {
+  const { data, error } = await api.rpc('update_app_user_schedule', {
     p_actor_id: currentUser.id,
     p_user_id: userId,
     p_schedule: schedule
@@ -2295,7 +2267,7 @@ async function saveTrainedDevices(userId) {
     renderProfile();
     return;
   }
-  const { data, error } = await supabase.rpc('update_app_user_trained_devices', {
+  const { data, error } = await api.rpc('update_app_user_trained_devices', {
     p_actor_id: currentUser.id,
     p_user_id: userId,
     p_trained_devices: uniqueDevices,
@@ -2312,7 +2284,7 @@ async function saveDashboardLayout(userId) {
   if (userId !== currentUser.id) return;
   const selected = document.querySelector('input[name="dashboardLayout"]:checked');
   const dashboardLayout = normalizeDashboardLayout(selected?.value);
-  const { data, error } = await supabase.rpc('update_app_user_dashboard_layout', {
+  const { data, error } = await api.rpc('update_app_user_dashboard_layout', {
     p_actor_id: currentUser.id,
     p_dashboard_layout: dashboardLayout,
     p_user_id: userId
@@ -2341,7 +2313,7 @@ function actorName() {
 
 async function addFileLog(fileId, action, fieldName = '', oldValue = '', newValue = '') {
   if (!fileId) return;
-  const { error } = await supabase.from('app_file_logs').insert({
+  const { error } = await api.from('app_file_logs').insert({
     file_id: fileId,
     actor_user_id: currentUser?.id || null,
     actor_name: actorName(),
@@ -2393,7 +2365,7 @@ async function logFileChanges(fileId, current, patch) {
       created_at: localTimestampIsoWithOffset()
     }));
   if (!rows.length) return;
-  const { error } = await supabase.from('app_file_logs').insert(rows);
+  const { error } = await api.from('app_file_logs').insert(rows);
   if (error) console.error('File log insert failed:', error);
 }
 
@@ -2416,7 +2388,7 @@ async function claimNextGipodCode(fileId) {
     return;
   }
 
-  const { data, error } = await withSupabaseRetry(() => supabase.rpc('claim_next_gipod_code', {
+  const { data, error } = await withApiRetry(() => api.rpc('claim_next_gipod_code', {
     p_file_id: fileId,
     p_crm_number: crmNumber,
     p_used_date: todayLocalDate()
@@ -2457,7 +2429,7 @@ async function submitGipodRequest(event) {
     $('gipodRequestMessage').textContent = 'Enter a reason before sending the request.';
     return;
   }
-  const { error } = await withSupabaseRetry(() => supabase.rpc('request_gipod_code', {
+  const { error } = await withApiRetry(() => api.rpc('request_gipod_code', {
     p_actor_id: currentUser.id,
     p_file_id: fileId,
     p_reason: reason,
@@ -2478,7 +2450,7 @@ async function approveGipodRequest(requestId) {
   const request = gipodRequests.find((item) => item.id === requestId);
   if (!request || request.status !== 'pending') return;
   if (!confirm(`Approve GIPOD code request for ${request.lastName}, ${request.firstName}?`)) return;
-  const { data, error } = await withSupabaseRetry(() => supabase.rpc('approve_gipod_code_request', {
+  const { data, error } = await withApiRetry(() => api.rpc('approve_gipod_code_request', {
     p_actor_id: currentUser.id,
     p_request_id: requestId,
     p_resolved_at: localTimestampIsoWithOffset(),
@@ -2516,7 +2488,7 @@ async function submitDeviceRequest(event) {
     $('deviceRequestMessage').textContent = 'List the apps wanted before sending an app request.';
     return;
   }
-  const { error } = await withSupabaseRetry(() => supabase.rpc('create_device_request', {
+  const { error } = await withApiRetry(() => api.rpc('create_device_request', {
     p_session_token: currentUser.deviceRequestToken || '',
     p_crm_link: $('deviceRequestCrm').value.trim(),
     p_device_number: $('deviceRequestDeviceNumber').value.trim(),
@@ -2537,7 +2509,7 @@ async function claimDeviceRequest(requestId) {
   if (effectiveRole() !== 'Device Systems Specialist') return;
   const request = deviceRequests.find((item) => item.id === requestId);
   if (!request || request.status === 'complete' || request.claimedByUserId) return;
-  const { data, error } = await withSupabaseRetry(() => supabase.rpc('claim_device_request', {
+  const { data, error } = await withApiRetry(() => api.rpc('claim_device_request', {
     p_session_token: currentUser.deviceRequestToken || '',
     p_request_id: requestId,
     p_claimed_at: localTimestampIsoWithOffset()
@@ -2556,7 +2528,7 @@ async function completeDeviceRequest(requestId) {
     return;
   }
   const completedAt = localTimestampIsoWithOffset();
-  const { data, error } = await withSupabaseRetry(() => supabase.rpc('complete_device_request', {
+  const { data, error } = await withApiRetry(() => api.rpc('complete_device_request', {
     p_session_token: currentUser.deviceRequestToken || '',
     p_request_id: requestId,
     p_completed_at: completedAt
@@ -2686,7 +2658,7 @@ function openFile(id) {
 async function updateFile(id, patch, reload = true) {
   const current = files.find((item) => item.id === id);
   const row = fileToRow({ ...current, ...patch });
-  const { error } = await withSupabaseRetry(() => supabase.from('trial_files').update(row).eq('id', id));
+  const { error } = await withApiRetry(() => api.from('trial_files').update(row).eq('id', id));
   if (error) return showError(error);
   await logFileChanges(id, current, patch);
   if (reload) await loadData();
@@ -2698,7 +2670,7 @@ async function saveDeviceNumber(id, value) {
   const previousValue = current.deviceNumber || '';
   current.deviceNumber = value;
   if ($('editId')?.value === id && $('editDeviceNumber')) $('editDeviceNumber').value = value;
-  const { error } = await withSupabaseRetry(() => supabase
+  const { error } = await withApiRetry(() => api
     .from('trial_files')
     .update({ device_number: value || '' })
     .eq('id', id));
@@ -2720,7 +2692,7 @@ async function updateGipod(id, patch, reload = true) {
     used_date: usedOn ? (patch.usedDate ?? current.usedDate ?? todayLocalDate()) : null,
     note: patch.note ?? current.note ?? ''
   };
-  const { error } = await withSupabaseRetry(() => supabase.from('gipod_codes').update(row).eq('id', id));
+  const { error } = await withApiRetry(() => api.from('gipod_codes').update(row).eq('id', id));
   if (error) return showError(error);
   if (reload) await loadData();
 }
@@ -2931,7 +2903,7 @@ async function addBulkFiles(event) {
     $('bulkMessage').textContent = `Missing queue date on import line${missingDates.length === 1 ? '' : 's'} ${missingDates.join(', ')}.`;
     return;
   }
-  const { error } = await withSupabaseRetry(() => supabase.from('trial_files').insert(rows.map(fileToRow)));
+  const { error } = await withApiRetry(() => api.from('trial_files').insert(rows.map(fileToRow)));
   if (error) return showError(error);
   $('bulkModal').close();
   view = canView('preprep') ? 'preprep' : firstAllowedView();
@@ -2960,7 +2932,7 @@ async function addGipodCodes(event) {
   event.preventDefault();
   const codes = parsedGipodCodes();
   if (!codes.length) return;
-  const { error } = await withSupabaseRetry(() => supabase.from('gipod_codes').insert(codes.map((code) => ({ code }))));
+  const { error } = await withApiRetry(() => api.from('gipod_codes').insert(codes.map((code) => ({ code }))));
   if (error) return showError(error);
   $('codeModal').close();
   await loadData();
@@ -3003,7 +2975,7 @@ async function moveToNextStep(id) {
 }
 
 async function logActivity(userId, fileId, action) {
-  const { error } = await withSupabaseRetry(() => supabase.from('app_user_activity').insert({
+  const { error } = await withApiRetry(() => api.from('app_user_activity').insert({
     user_id: userId,
     file_id: fileId,
     action,
@@ -3013,7 +2985,7 @@ async function logActivity(userId, fileId, action) {
 }
 
 async function logShipment(file) {
-  const { error } = await withSupabaseRetry(() => supabase.from('app_shipment_activity').insert({
+  const { error } = await withApiRetry(() => api.from('app_shipment_activity').insert({
     file_id: file.id,
     first_name: file.first || '',
     last_name: file.last || '',
@@ -3076,9 +3048,9 @@ async function endOfDayCleanup() {
     return;
   }
   if (!confirm(`End of day cleanup will archive and clear ${shippedFiles.length} shipped file${shippedFiles.length === 1 ? '' : 's'} from the shipped lane. Continue?`)) return;
-  const { error: insertError } = await withSupabaseRetry(() => supabase.from('app_eod_cleanups').insert(cleanupPayload(shippedFiles)));
+  const { error: insertError } = await withApiRetry(() => api.from('app_eod_cleanups').insert(cleanupPayload(shippedFiles)));
   if (insertError) return showError(insertError);
-  const { error: deleteError } = await withSupabaseRetry(() => supabase.from('trial_files').delete().in('id', shippedFiles.map((file) => file.id)));
+  const { error: deleteError } = await withApiRetry(() => api.from('trial_files').delete().in('id', shippedFiles.map((file) => file.id)));
   if (deleteError) return showError(deleteError);
   await loadData();
 }
@@ -3112,7 +3084,7 @@ async function claimQa(id) {
 async function deleteFile(id) {
   const file = files.find((item) => item.id === id);
   if (!file || !isPrePrep(file) || !confirm(`Delete ${file.last}, ${file.first}? This cannot be undone.`)) return;
-  const { error } = await withSupabaseRetry(() => supabase.from('trial_files').delete().eq('id', id));
+  const { error } = await withApiRetry(() => api.from('trial_files').delete().eq('id', id));
   if (error) return showError(error);
   await loadData();
 }
@@ -3121,7 +3093,7 @@ async function bulkDeleteFiles() {
   const ids = [...selectedFileIds].filter((id) => files.some((file) => file.id === id && isPrePrep(file)));
   if (!ids.length || !canEditFiles()) return;
   if (!confirm(`Delete ${ids.length} selected file${ids.length === 1 ? '' : 's'}? This cannot be undone.`)) return;
-  const { error } = await withSupabaseRetry(() => supabase.from('trial_files').delete().in('id', ids));
+  const { error } = await withApiRetry(() => api.from('trial_files').delete().in('id', ids));
   if (error) return showError(error);
   selectedFileIds.clear();
   await loadData();
@@ -3131,7 +3103,7 @@ async function deleteCleanup(id) {
   if (!canManageUsers()) return;
   const cleanup = eodCleanups.find((item) => item.id === id);
   if (!cleanup || !confirm(`Delete the end-of-day cleanup report for ${formatDate(cleanup.cleanup_date)}? This cannot be undone.`)) return;
-  const { error } = await withSupabaseRetry(() => supabase.from('app_eod_cleanups').delete().eq('id', id));
+  const { error } = await withApiRetry(() => api.from('app_eod_cleanups').delete().eq('id', id));
   if (error) return showError(error);
   await loadData();
 }
@@ -3144,9 +3116,9 @@ async function deleteLeadReports() {
   const reportCount = shipmentHistory.length + eodCleanups.length;
   if (!reportCount) return;
   if (!confirm(`Delete all Lead Dashboard reports? This will remove ${shipmentHistory.length} shipped file report${shipmentHistory.length === 1 ? '' : 's'} and ${eodCleanups.length} end-of-day cleanup report${eodCleanups.length === 1 ? '' : 's'}. This cannot be undone.`)) return;
-  const { error: shipmentError } = await withSupabaseRetry(() => supabase.from('app_shipment_activity').delete().not('id', 'is', null));
+  const { error: shipmentError } = await withApiRetry(() => api.from('app_shipment_activity').delete().not('id', 'is', null));
   if (shipmentError) return showError(shipmentError);
-  const { error: cleanupError } = await withSupabaseRetry(() => supabase.from('app_eod_cleanups').delete().not('id', 'is', null));
+  const { error: cleanupError } = await withApiRetry(() => api.from('app_eod_cleanups').delete().not('id', 'is', null));
   if (cleanupError) return showError(cleanupError);
   shipmentHistory = [];
   eodCleanups = [];
@@ -3155,13 +3127,13 @@ async function deleteLeadReports() {
 
 function showError(error) {
   console.error(error);
-  if (isRecoverableSupabaseError(error)) {
+  if (isRecoverableApiError(error)) {
     scheduleRealtimeReconnect('Connection reconnecting');
     alert(error.message || 'Connection issue. The app is reconnecting.');
     return;
   }
-  setConnection('Error', error.message || 'Supabase error');
-  alert(error.message || 'Supabase error');
+  setConnection('Error', error.message || 'server error');
+  alert(error.message || 'server error');
 }
 
 document.addEventListener('click', async (event) => {
@@ -3252,11 +3224,7 @@ window.addEventListener('beforeunload', () => {
 
 async function boot() {
   localStorage.removeItem('currentAppUser');
-  if (!SUPABASE_URL || !SUPABASE_KEY || SUPABASE_KEY.includes('replace-with')) {
-    renderConfig();
-    return;
-  }
-  createSupabaseClient();
+  createApiConnection();
   if (!currentUser) {
     renderLogin();
     return;

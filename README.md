@@ -37,4 +37,4 @@ The application now runs entirely on a local Node.js API and SQLite database. No
 2. Run the browser development environment with `pnpm dev`, or the Electron app with `pnpm start`.
 3. Sign in with the initial administrator account: **Smartbox Admin**, PIN **7394**. Change that PIN after the first login.
 
-The database is created automatically at `data/trials-dashboard.sqlite`. Set `TRIALS_DATA_DIR` on the server process to store it elsewhere. Back up that file (and its `-wal` file while the server is running) to preserve all dashboard data. The API listens on `127.0.0.1:47831` by default; `PORT` can override this for a standalone server and `VITE_API_URL` can point browser clients at it.
+The database is created automatically at `data/trials-dashboard.sqlite`. Set `TRIALS_DATA_DIR` on the server process to store it elsewhere. Back up that file (and its `-wal` file while the server is running) to preserve all dashboard data. The API listens on the server machine's internal address, `10.1.100.69:47831`, by default; `PORT` can override the port for a standalone server and `VITE_API_URL` can point browser clients at a different API address.

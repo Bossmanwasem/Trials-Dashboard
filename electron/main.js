@@ -128,7 +128,7 @@ function createWindow() {
   });
 
   if (isDev) {
-    mainWindow.loadURL('http://127.0.0.1:5173');
+    mainWindow.loadURL('http://10.1.100.69:5173');
   } else {
     mainWindow.loadFile(path.join(app.getAppPath(), 'dist', 'index.html'));
   }
@@ -136,7 +136,7 @@ function createWindow() {
 
 async function ensureLocalServer() {
   try {
-    const response = await fetch('http://127.0.0.1:47831/api/health');
+    const response = await fetch('http://10.1.100.69:47831/api/health');
     if (response.ok) return;
   } catch { /* Start the bundled server below. */ }
   process.env.TRIALS_DATA_DIR ||= app.getPath('userData');
@@ -144,7 +144,7 @@ async function ensureLocalServer() {
   await new Promise((resolve, reject) => {
     const server = createServer();
     server.once('error', reject);
-    server.listen(47831, '127.0.0.1', resolve);
+    server.listen(47831, '10.1.100.69', resolve);
   });
 }
 

@@ -5,10 +5,10 @@
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
-    "dev": "concurrently -k \"node server/index.js\" \"vite --host 127.0.0.1\"",
+    "dev": "concurrently -k \"node server/index.js\" \"vite --host 10.1.100.69\"",
     "server": "node server/index.js",
     "electron": "electron .",
-    "start": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
+    "start": "concurrently -k \"vite --host 10.1.100.69\" \"wait-on http://10.1.100.69:5173 && electron .\"",
     "clean": "powershell -ExecutionPolicy Bypass -File scripts/clean-package-output.ps1",
     "build": "vite build --base=./",
     "dist": "powershell -ExecutionPolicy Bypass -File scripts/package-win.ps1"

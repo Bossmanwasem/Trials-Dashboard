@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:47831';
+const API_URL = import.meta.env.VITE_API_URL || 'http://10.1.100.69:47831';
 
 async function request(path, options = {}) {
   try {

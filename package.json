@@ -1,11 +1,12 @@
 {
   "name": "trials-operations-dashboard",
   "version": "1.0.19",
-  "description": "Windows desktop trials operations dashboard backed by Supabase Realtime.",
+  "description": "Self-hosted Windows desktop trials operations dashboard backed by Node.js and SQLite.",
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
+    "dev": "concurrently -k \"node server/index.js\" \"vite --host 127.0.0.1\"",
+    "server": "node server/index.js",
     "electron": "electron .",
     "start": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
     "clean": "powershell -ExecutionPolicy Bypass -File scripts/clean-package-output.ps1",
@@ -13,7 +14,6 @@
     "dist": "powershell -ExecutionPolicy Bypass -File scripts/package-win.ps1"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.112.3",
     "electron-updater": "^6.8.9"
   },
   "devDependencies": {
@@ -29,10 +29,14 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
+      "server/**/*",
       "package.json"
     ],
     "directories": {
       "output": "app-release"
     }
+  },
+  "engines": {
+    "node": ">=22.5.0"
   }
 }

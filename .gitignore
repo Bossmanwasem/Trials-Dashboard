@@ -1,0 +1,7 @@
+node_modules/
+dist/
+app-release/
+data/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
